@@ -1,5 +1,6 @@
 from .models import Question
-from django.http import HttpResponse, Http404
+from django.urls import reverse
+from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.shortcuts import render, get_object_or_404
 from django.template import loader
 
@@ -53,9 +54,31 @@ def detail(request, question_id):
 
 
 def results(request, question_id):
-    response  = f"You're looking at the results of question {question_id}"
-    return HttpResponse(response)
+    question = get_object_or_404(Question, pk=question_id)
+    return render(request,
+                  'polls/results.html',
+                  {
+                      'question': question,
+                  })
 
 def vote(request, question_id):
-    response = f"You're voting on question {question_id}"
+    question = get_object_or_404(Question, pk=question_id)
+    try:
+        question_post_pk = request.POST['choice']
+        selected_choice = question.choice_set.get(pk=question_post_pk)
+    except (KeyError, Choice.DoesNotExist):
+        return render(request, 
+        'polls/detail.html',
+        {
+            'question': question,
+            'error_message': "You didn't select a choice.",
+        })
+    else:
+        selected_choice.votes += 1
+        selected_choice.save()
+        # Return HttpResponseRedirect after a successful POST. This
+        # This prevents the data from being posted twice if the user
+        # hits the back button. 
+        return HttpResponseRedirect(reverse('polls:results', args=(question_id,)))
+
     return HttpResponse(response)
